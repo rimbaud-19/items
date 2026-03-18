@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>동구밭 리뷰 고객군 분석 대시보드</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f7f6f3;--bg2:#ffffff;--bg3:#edecea;--text:#1a1a18;--text2:#5f5e5a;--text3:#8a8983;
+  --border:#e0dfdb;--accent:#534AB7;--accent-light:#EEEDFE;--accent-mid:#AFA9EC;
+  --teal:#0F6E56;--teal-light:#E1F5EE;--coral:#D85A30;--coral-light:#FAECE7;
+  --pink:#D4537E;--pink-light:#FBEAF0;--blue:#378ADD;--blue-light:#E6F1FB;
+  --amber:#BA7517;--amber-light:#FAEEDA;--green:#639922;--green-light:#EAF3DE;
+  --red:#A32D2D;--red-light:#FCEBEB;
+  --radius:12px;--radius-sm:8px;
+  --font-display:'Outfit',sans-serif;--font-body:'Noto Sans KR',sans-serif;
+}
+[data-theme="dark"]{
+  --bg:#18181a;--bg2:#232326;--bg3:#2c2c2f;--text:#e8e6e0;--text2:#a0a09a;--text3:#6e6e68;
+  --border:#3a3a3d;--accent-light:#2a2848;--accent-mid:#6b63c0;
+  --teal-light:#0a2e24;--coral-light:#3a1e14;--pink-light:#3a1828;
+  --blue-light:#142840;--amber-light:#2e1e08;--green-light:#1a2810;--red-light:#2e1414;
+}
+html{scroll-behavior:smooth}
+body{
+  font-family:var(--font-body);background:var(--bg);color:var(--text);
+  line-height:1.6;-webkit-font-smoothing:antialiased;
+}
+.container{max-width:1100px;margin:0 auto;padding:2rem 1.5rem 4rem;}
+
+.header{text-align:center;padding:3rem 0 2.5rem;position:relative;}
+.header::before{
+  content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:60px;height:4px;background:var(--accent);border-radius:2px;
+}
+.header h1{
+  font-family:var(--font-display);font-size:clamp(1.6rem,4vw,2.2rem);font-weight:700;
+  letter-spacing:-0.02em;margin-bottom:0.5rem;
+}
+.header p{color:var(--text2);font-size:0.9rem;font-weight:300;}
+.header .badge{
+  display:inline-block;margin-top:0.75rem;padding:4px 14px;font-size:0.75rem;
+  background:var(--accent-light);color:var(--accent);border-radius:20px;font-weight:500;
+}
+
+.theme-toggle{
+  position:fixed;top:1rem;right:1rem;z-index:100;width:40px;height:40px;
+  border:1px solid var(--border);border-radius:50%;background:var(--bg2);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:1.1rem;transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,0.06);
+}
+.theme-toggle:hover{transform:scale(1.1);border-color:var(--accent);}
+
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:2.5rem;}
+.metric-card{
+  background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);
+  padding:1.25rem;transition:transform .15s,box-shadow .15s;
+}
+.metric-card:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,0.06);}
+.metric-card .label{font-size:0.75rem;color:var(--text3);font-weight:400;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.04em;}
+.metric-card .value{font-family:var(--font-display);font-size:1.6rem;font-weight:700;line-height:1.2;}
+.metric-card .sub{font-size:0.78rem;color:var(--text2);margin-top:4px;}
+
+.section{margin-bottom:3rem;}
+.section-title{
+  font-family:var(--font-display);font-size:1.15rem;font-weight:600;
+  margin-bottom:1rem;display:flex;align-items:center;gap:8px;
+}
+.section-title .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+
+.chart-wrap{
+  background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);
+  padding:1.5rem;
+}
+.chart-container{position:relative;width:100%;}
+
+.heatmap-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.heatmap{width:100%;border-collapse:collapse;font-size:0.78rem;min-width:700px;}
+.heatmap th{
+  padding:10px 6px;text-align:center;font-weight:500;color:var(--text2);font-size:0.72rem;
+  border-bottom:2px solid var(--border);position:sticky;top:0;background:var(--bg2);
+  text-transform:uppercase;letter-spacing:0.03em;
+}
+.heatmap th:first-child{text-align:left;min-width:140px;}
+.heatmap td{padding:8px 6px;text-align:center;border-bottom:1px solid var(--border);transition:background .2s;}
+.heatmap td:first-child{text-align:left;font-weight:500;color:var(--text);font-size:0.8rem;}
+.heatmap tr:hover td{background:var(--bg3)!important;}
+.heatmap .heat-0{background:transparent}
+.heatmap .heat-1{background:var(--accent-light)}
+.heatmap .heat-2{background:color-mix(in srgb,var(--accent-light) 50%,var(--accent-mid) 15%)}
+.heatmap .heat-3{background:color-mix(in srgb,var(--accent-light) 30%,var(--accent-mid) 30%)}
+.heatmap .heat-4{background:color-mix(in srgb,var(--accent-mid) 50%,var(--accent) 20%)}
+
+.tag-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;}
+.tag-card{
+  background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);
+  padding:1.25rem;transition:transform .15s,box-shadow .15s;
+}
+.tag-card:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,0.06);}
+.tag-card .name{font-weight:600;font-size:0.95rem;margin-bottom:8px;}
+.tag-card .tags{display:flex;flex-wrap:wrap;gap:5px;}
+.tag-card .tag{
+  font-size:0.7rem;padding:3px 10px;border-radius:20px;font-weight:500;
+  white-space:nowrap;
+}
+
+.sample-section{margin-top:3rem;}
+.sample-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;}
+.sample-card{
+  background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;
+}
+.sample-card .seg-label{
+  font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;
+  margin-bottom:8px;padding:3px 10px;border-radius:20px;display:inline-block;
+}
+.sample-card .review{font-size:0.82rem;color:var(--text2);line-height:1.7;font-weight:300;}
+.sample-card .review em{font-style:normal;font-weight:600;color:var(--accent);background:var(--accent-light);padding:1px 4px;border-radius:3px;}
+
+.footer{
+  text-align:center;padding:2rem 0 0;border-top:1px solid var(--border);
+  margin-top:2rem;color:var(--text3);font-size:0.78rem;
+}
+
+@media(max-width:600px){
+  .container{padding:1rem;}
+  .metrics{grid-template-columns:repeat(2,1fr);}
+  .metric-card .value{font-size:1.3rem;}
+  .tag-cards{grid-template-columns:1fr;}
+  .sample-grid{grid-template-columns:1fr;}
+  .job-grid-2col{grid-template-columns:1fr!important;}
+}
+</style>
+</head>
+<body>
+<button class="theme-toggle" onclick="toggleTheme()" id="themeBtn" aria-label="Toggle theme">☀️</button>
+
+<div class="container">
+<div class="header">
+  <h1>동구밭 리뷰 고객군 키워드 분석</h1>
+  <p>1년간 수집된 상품 리뷰 데이터 기반 · 고객 세그먼트 & 타겟 키워드 도출</p>
+  <span class="badge">2025–2026 리뷰 데이터 · 27,056건 분석</span>
+</div>
+
+<div class="metrics">
+  <div class="metric-card">
+    <div class="label">총 분석 리뷰</div>
+    <div class="value">27,056<span style="font-size:.85rem;font-weight:400;color:var(--text2);">건</span></div>
+  </div>
+  <div class="metric-card">
+    <div class="label">고객군 키워드 포함</div>
+    <div class="value" style="color:var(--accent);">5,008<span style="font-size:.85rem;font-weight:400;">건</span></div>
+    <div class="sub">전체의 18.5%</div>
+  </div>
+  <div class="metric-card">
+    <div class="label">1위 세그먼트</div>
+    <div class="value">선물 구매</div>
+    <div class="sub">3,414건 (12.6%)</div>
+  </div>
+  <div class="metric-card">
+    <div class="label">2위 세그먼트</div>
+    <div class="value">환경의식</div>
+    <div class="sub">1,144건 (4.2%)</div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title"><span class="dot" style="background:var(--accent);"></span>고객 세그먼트별 리뷰 출현 빈도</div>
+  <div class="chart-wrap">
+    <div class="chart-container" style="height:340px;"><canvas id="segChart"></canvas></div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title"><span class="dot" style="background:var(--teal);"></span>세부 키워드 Top 25</div>
+  <div class="chart-wrap">
+    <div class="chart-container" style="height:520px;"><canvas id="kwChart"></canvas></div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title"><span class="dot" style="background:var(--coral);"></span>주요 상품 × 고객 세그먼트 히트맵</div>
+  <p style="font-size:0.78rem;color:var(--text3);margin-bottom:12px;">셀 안의 숫자는 해당 상품 리뷰 중 키워드 출현 비율(%). 색이 진할수록 비율이 높습니다.</p>
+  <div class="chart-wrap">
+    <div class="heatmap-wrap"><table class="heatmap" id="heatmap"></table></div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title"><span class="dot" style="background:var(--pink);"></span>상품별 핵심 타겟 고객군</div>
+  <div class="tag-cards" id="tagCards"></div>
+</div>
+
+<div class="section sample-section">
+  <div class="section-title"><span class="dot" style="background:var(--blue);"></span>세그먼트별 대표 리뷰 예시</div>
+  <div class="sample-grid" id="sampleGrid"></div>
+</div>
+
+<div class="section" style="margin-top:3rem;">
+  <div class="section-title"><span class="dot" style="background:var(--amber);"></span>리뷰 속 고객 직업군 키워드</div>
+  <p style="font-size:0.82rem;color:var(--text2);margin-bottom:16px;line-height:1.7;">
+    리뷰 내 직업 관련 키워드를 전수 조사하여, 문맥상 실제 직업을 의미하는 경우만 선별했습니다.<br>
+    <span style="color:var(--text3);">※ "재구매<b>의사</b>", "아기<b>자기</b>하다", "<b>화가</b> 나다" 등 오탐 키워드는 제외</span>
+  </p>
+
+  <div class="job-grid-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
+    <div class="chart-wrap">
+      <div style="font-size:0.85rem;font-weight:600;margin-bottom:12px;">직업군별 언급 건수</div>
+      <div class="chart-container" style="height:300px;"><canvas id="jobChart"></canvas></div>
+    </div>
+    <div class="chart-wrap" style="display:flex;flex-direction:column;justify-content:center;">
+      <div style="font-size:0.85rem;font-weight:600;margin-bottom:12px;">주요 발견 인사이트</div>
+      <div id="jobInsights"></div>
+    </div>
+  </div>
+
+  <div style="font-size:0.9rem;font-weight:600;margin-bottom:12px;">직업군별 대표 리뷰</div>
+  <div class="sample-grid" id="jobSampleGrid"></div>
+</div>
+
+<div class="section" style="margin-top:3rem;">
+  <div class="section-title"><span class="dot" style="background:var(--green);"></span>재구매 키워드 분석</div>
+  <p style="font-size:0.82rem;color:var(--text2);margin-bottom:16px;line-height:1.7;">
+    리뷰에서 재구매 의사·이력을 직접 밝힌 키워드를 분석했습니다. 전체 리뷰의 <b>13.8% (3,730건)</b>에서 재구매 관련 표현이 확인되었습니다.
+  </p>
+
+  <div class="metrics" style="margin-bottom:20px;">
+    <div class="metric-card">
+      <div class="label">재구매 언급 리뷰</div>
+      <div class="value" style="color:var(--green);">3,730<span style="font-size:.85rem;font-weight:400;">건</span></div>
+      <div class="sub">전체의 13.8%</div>
+    </div>
+    <div class="metric-card">
+      <div class="label">재구매율 1위 상품</div>
+      <div class="value">설거지 워싱바</div>
+      <div class="sub">22.7% — 압도적 충성도</div>
+    </div>
+    <div class="metric-card">
+      <div class="label">재구매율 최저 상품</div>
+      <div class="value">퍼퓸바 선물세트</div>
+      <div class="sub">1.9% — 선물용 특성</div>
+    </div>
+    <div class="metric-card">
+      <div class="label">재구매 고객 1위 세그먼트</div>
+      <div class="value">환경의식</div>
+      <div class="sub">재구매 리뷰의 8.5%</div>
+    </div>
+  </div>
+
+  <div class="job-grid-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
+    <div class="chart-wrap">
+      <div style="font-size:0.85rem;font-weight:600;margin-bottom:12px;">재구매 키워드 유형별 분포</div>
+      <div class="chart-container" style="height:280px;"><canvas id="repTypeChart"></canvas></div>
+    </div>
+    <div class="chart-wrap">
+      <div style="font-size:0.85rem;font-weight:600;margin-bottom:12px;">재구매 고객의 세그먼트 교차</div>
+      <div class="chart-container" style="height:280px;"><canvas id="repSegChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="section" style="margin-bottom:0;">
+    <div style="font-size:0.9rem;font-weight:600;margin-bottom:12px;">상품별 재구매 키워드 비율</div>
+    <div class="chart-wrap">
+      <div class="chart-container" style="height:440px;"><canvas id="repProdChart"></canvas></div>
+    </div>
+  </div>
+
+  <div style="font-size:0.9rem;font-weight:600;margin:24px 0 12px;">재구매 유형별 대표 리뷰</div>
+  <div class="sample-grid" id="repSampleGrid"></div>
+</div>
+
+<div class="footer">
+  동구밭 리뷰 고객군 분석 대시보드 · 데이터 기준일 2026.03.18 · Claude AI 분석
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const root = document.documentElement;
+let darkMode = window.matchMedia('(prefers-color-scheme:dark)').matches;
+if(darkMode) root.setAttribute('data-theme','dark');
+document.getElementById('themeBtn').textContent = darkMode?'☀️':'🌙';
+
+function toggleTheme(){
+  darkMode=!darkMode;
+  root.setAttribute('data-theme',darkMode?'dark':'');
+  document.getElementById('themeBtn').textContent=darkMode?'☀️':'🌙';
+  buildCharts();buildJobChart();buildRepCharts();
+}
+
+const segData=[
+  {label:'선물 구매',count:3414,pct:12.6},{label:'환경의식 소비자',count:1144,pct:4.2},
+  {label:'민감/아토피 피부',count:1067,pct:3.9},{label:'아이/어린이 부모',count:406,pct:1.5},
+  {label:'남성 (남편/신랑)',count:282,pct:1.0},{label:'아기/유아 부모',count:249,pct:0.9},
+  {label:'가족/온가족',count:243,pct:0.9},{label:'영유아맘/육아맘',count:75,pct:0.3},
+  {label:'학생/10대',count:51,pct:0.2}
+];
+const segColors=['#534AB7','#0F6E56','#D85A30','#1D9E75','#378ADD','#D4537E','#639922','#993556','#BA7517'];
+
+const kwData=[
+  {kw:'선물',n:2635},{kw:'환경',n:969},{kw:'플라스틱',n:609},{kw:'아이',n:595},{kw:'건조',n:549},
+  {kw:'집들이',n:376},{kw:'친환경',n:290},{kw:'아기',n:236},{kw:'민감',n:198},{kw:'트러블',n:182},
+  {kw:'가족',n:175},{kw:'예민',n:144},{kw:'남편',n:139},{kw:'아이들',n:121},{kw:'딸',n:94},
+  {kw:'생일',n:86},{kw:'엄마',n:76},{kw:'지구',n:71},{kw:'온가족',n:70},{kw:'제로웨이스트',n:67},
+  {kw:'회사',n:54},{kw:'아들',n:53},{kw:'아토피',n:48},{kw:'부모님',n:39},{kw:'남자',n:33}
+];
+
+const products=['플라워가든 퍼퓸바','오브제 퍼퓸바','설거지비누 풋귤','샴푸바 단골세트','설거지 워싱바','트리트먼트바','샴푸바 (7종)','샴푸바 중건성용','아기비누 (올인원)','블루밍 퍼퓸 샴푸바','페이스앤바디바','샴푸바 지성용','비누망/거품망'];
+const segments=['선물','환경의식','민감/아토피','아이/어린이','아기/유아','남성','가족/온가족','엄마/육아'];
+const heatData=[
+  [65.8,1.0,0.2,0.7,1.0,0.1,0.1,0.2],
+  [13.9,0.6,0.7,1.3,0.1,0.4,0.1,0.2],
+  [2.6,10.9,0.2,0.2,0.6,0.2,0.5,0.9],
+  [2.0,11.4,2.3,3.1,0.6,2.0,1.3,0.6],
+  [2.5,9.5,0.3,0.5,0.7,0.2,0.5,0.4],
+  [3.9,8.1,1.2,0.6,0.1,0.4,0.3,0.4],
+  [2.6,8.0,2.9,1.2,0.1,1.0,1.0,0.3],
+  [4.8,7.8,2.4,1.8,0.2,1.4,1.1,0.4],
+  [1.1,3.2,6.8,5.5,9.4,0.9,3.4,1.1],
+  [3.9,3.8,2.6,0.5,0.2,2.0,0.4,0.8],
+  [6.1,5.1,2.2,1.1,0.5,0.8,1.0,0.1],
+  [3.2,6.8,2.0,1.7,0.0,1.9,0.8,0.3],
+  [1.8,7.8,3.0,2.1,3.2,0.4,1.3,1.1]
+];
+
+let chart1,chart2;
+function buildCharts(){
+  const tc=darkMode?'#a0a09a':'#5f5e5a';
+  const gc=darkMode?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.05)';
+
+  if(chart1)chart1.destroy();
+  chart1=new Chart(document.getElementById('segChart'),{
+    type:'bar',
+    data:{labels:segData.map(d=>d.label),datasets:[{data:segData.map(d=>d.count),backgroundColor:segColors,borderRadius:6,barPercentage:0.7}]},
+    options:{
+      responsive:true,maintainAspectRatio:false,indexAxis:'y',
+      plugins:{legend:{display:false},tooltip:{backgroundColor:darkMode?'#333':'#fff',titleColor:darkMode?'#fff':'#1a1a18',bodyColor:darkMode?'#ccc':'#5f5e5a',borderColor:darkMode?'#555':'#e0dfdb',borderWidth:1,padding:12,cornerRadius:8,
+        callbacks:{label:ctx=>`  ${ctx.raw.toLocaleString()}건 (${segData[ctx.dataIndex].pct}%)`}}},
+      scales:{x:{grid:{color:gc},ticks:{color:tc,font:{size:11,family:'Outfit'}}},y:{grid:{display:false},ticks:{color:tc,font:{size:12,family:'Noto Sans KR'}}}}
+    }
+  });
+
+  if(chart2)chart2.destroy();
+  chart2=new Chart(document.getElementById('kwChart'),{
+    type:'bar',
+    data:{labels:kwData.map(d=>d.kw),datasets:[{data:kwData.map(d=>d.n),backgroundColor:darkMode?'#AFA9EC':'#534AB7',borderRadius:4,barPercentage:0.65}]},
+    options:{
+      responsive:true,maintainAspectRatio:false,indexAxis:'y',
+      plugins:{legend:{display:false},tooltip:{backgroundColor:darkMode?'#333':'#fff',titleColor:darkMode?'#fff':'#1a1a18',bodyColor:darkMode?'#ccc':'#5f5e5a',borderColor:darkMode?'#555':'#e0dfdb',borderWidth:1,padding:12,cornerRadius:8,
+        callbacks:{label:ctx=>`  ${ctx.raw.toLocaleString()}건`}}},
+      scales:{x:{grid:{color:gc},ticks:{color:tc,font:{size:11,family:'Outfit'}}},y:{grid:{display:false},ticks:{color:tc,font:{size:11,family:'Noto Sans KR'}}}}
+    }
+  });
+}
+
+function heatClass(v){
+  if(v===0)return'heat-0';if(v<2)return'heat-1';if(v<5)return'heat-2';if(v<10)return'heat-3';return'heat-4';
+}
+let h='<tr><th>상품</th>';
+segments.forEach(s=>{h+=`<th>${s}</th>`;});h+='</tr>';
+products.forEach((p,i)=>{
+  h+=`<tr><td>${p}</td>`;
+  heatData[i].forEach(v=>{h+=`<td class="${heatClass(v)}">${v===0?'—':v.toFixed(1)}</td>`;});
+  h+='</tr>';
+});
+document.getElementById('heatmap').innerHTML=h;
+
+const tagCardData=[
+  {name:'아기비누 (올인원 알로에)',tags:[{t:'아기/유아 9.4%',c:'pink'},{t:'민감피부 6.8%',c:'coral'},{t:'아이/어린이 5.5%',c:'teal'},{t:'가족 3.4%',c:'green'}]},
+  {name:'플라워가든 퍼퓸바 선물세트',tags:[{t:'선물 65.8%',c:'accent'}]},
+  {name:'오브제 퍼퓸바',tags:[{t:'선물 13.9%',c:'accent'}]},
+  {name:'설거지 워싱바 / 풋귤',tags:[{t:'환경의식 9.5~10.9%',c:'teal'},{t:'엄마/육아 0.4~0.9%',c:'pink'}]},
+  {name:'샴푸바 (중건성/지성)',tags:[{t:'환경의식 6.8~7.8%',c:'teal'},{t:'민감피부 2.0~2.4%',c:'coral'},{t:'남성 1.4~1.9%',c:'blue'}]},
+  {name:'블루밍 퍼퓸 샴푸바',tags:[{t:'남성(남편) 2.0%',c:'blue'},{t:'선물 3.9%',c:'accent'},{t:'환경 3.8%',c:'teal'}]},
+  {name:'비누망/거품망',tags:[{t:'환경의식 7.8%',c:'teal'},{t:'아기/유아 3.2%',c:'pink'},{t:'민감피부 3.0%',c:'coral'}]}
+];
+const colorMap={accent:['var(--accent-light)','var(--accent)'],teal:['var(--teal-light)','var(--teal)'],coral:['var(--coral-light)','var(--coral)'],pink:['var(--pink-light)','var(--pink)'],blue:['var(--blue-light)','var(--blue)'],green:['var(--green-light)','var(--green)'],amber:['var(--amber-light)','var(--amber)']};
+let tc2='';
+tagCardData.forEach(c=>{
+  tc2+=`<div class="tag-card"><div class="name">${c.name}</div><div class="tags">`;
+  c.tags.forEach(t=>{const[bg,fg]=colorMap[t.c];tc2+=`<span class="tag" style="background:${bg};color:${fg};">${t.t}</span>`;});
+  tc2+='</div></div>';
+});
+document.getElementById('tagCards').innerHTML=tc2;
+
+const samples=[
+  {seg:'아기/유아 부모',color:'pink',reviews:['아기 세제까지 동구밭 믿고 써요','<em>아기</em>식기 닦느라 구매하기 시작했는데 이젠 설거지+과일세척 할때 안심하고 쓰고 있어요','<em>아기</em>비누 순해서 이제 이것만 씁니다~']},
+  {seg:'선물 구매자',color:'accent',reviews:['<em>집들이</em> <em>선물</em>로 너무너무 예쁘네요','<em>선물</em>로 드렸어요. 너무 좋아하시네요','친구 <em>생일</em> <em>선물</em>로 비누 세트 보내면서 같이 보냈어요']},
+  {seg:'환경의식 소비자',color:'teal',reviews:['<em>환경</em>을 생각하면 비누 쓰라는 건가봐요','늘 믿고 사는 동구밭입니다. <em>친환경</em> 세제라서 안심하고 사용해요','<em>환경</em>을 생각할 수 있는 제품이라 더 좋습니다']},
+  {seg:'민감/아토피 피부',color:'coral',reviews:['피부염 이후로 세제에 <em>민감</em>한데 만족입니다','<em>아토피</em> 피부인 아이에게 부드럽고 좋습니다','<em>민감</em>한 피부라 고체 비누로 바꿨는데 너무 잘 맞아요']},
+  {seg:'남성 (남편/신랑)',color:'blue',reviews:['<em>남편</em>이 잘 맞는다 그래서 계속 재구매중입니다','<em>신랑</em>이 인스타보고 써보라해서 주문했는데 사용감 좋아요','<em>남편</em>이 마음에 들어하네요']},
+  {seg:'가족/온가족',color:'green',reviews:['<em>가족</em> 피부 타입별 구입','한번에 여러개 구입해서 <em>가족</em>들 하나씩 언젠가부터 이 비누만 쓰네요','<em>환경</em>과 <em>가족</em>을 위해 구매했어요']}
+];
+let sg='';
+samples.forEach(s=>{
+  const[bg,fg]=colorMap[s.color];
+  sg+=`<div class="sample-card"><span class="seg-label" style="background:${bg};color:${fg};">${s.seg}</span>`;
+  s.reviews.forEach(r=>{sg+=`<p class="review" style="margin-top:8px;">❝ ${r}</p>`;});
+  sg+='</div>';
+});
+document.getElementById('sampleGrid').innerHTML=sg;
+
+const jobData=[
+  {label:'주부/살림',count:13,context:'설거지 시 주부습진 언급',product:'설거지 워싱바'},
+  {label:'선생님',count:7,context:'선물 받는 대상으로 언급',product:'퍼퓸바 선물세트'},
+  {label:'직장인/사무실',count:5,context:'사무실에서 쓰려고 구매',product:'핸드크림, 고체치약'},
+  {label:'원장님 (미용실)',count:3,context:'머릿결 좋아졌다는 피드백',product:'트리트먼트바'},
+  {label:'유튜버/인플루언서',count:3,context:'구매 계기 (추천 보고)',product:'설거지 워싱바, 핸드크림'},
+  {label:'교수님',count:2,context:'선물 받는 대상 (임용 축하)',product:'우디 퍼퓸바'},
+  {label:'카페 직원',count:2,context:'손 자주 씻어서 무향 선호',product:'무향 핸드크림'},
+  {label:'담임선생님',count:2,context:'선물 받는 대상',product:'샴푸바, 퍼퓸바'},
+  {label:'간호사/병원 근무',count:1,context:'무향 필수 (주변 배려)',product:'핸드크림 미니세트'},
+  {label:'승무원',count:1,context:'여행 시 휴대 편의',product:'트리트먼트바'},
+];
+const jobColors=['#BA7517','#534AB7','#378ADD','#D4537E','#0F6E56','#534AB7','#D85A30','#534AB7','#1D9E75','#639922'];
+
+let chart3;
+function buildJobChart(){
+  const tc=darkMode?'#a0a09a':'#5f5e5a';
+  const gc=darkMode?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.05)';
+  if(chart3)chart3.destroy();
+  chart3=new Chart(document.getElementById('jobChart'),{
+    type:'bar',
+    data:{labels:jobData.map(d=>d.label),datasets:[{data:jobData.map(d=>d.count),backgroundColor:jobColors,borderRadius:4,barPercentage:0.65}]},
+    options:{
+      responsive:true,maintainAspectRatio:false,indexAxis:'y',
+      plugins:{legend:{display:false},tooltip:{backgroundColor:darkMode?'#333':'#fff',titleColor:darkMode?'#fff':'#1a1a18',bodyColor:darkMode?'#ccc':'#5f5e5a',borderColor:darkMode?'#555':'#e0dfdb',borderWidth:1,padding:12,cornerRadius:8,
+        callbacks:{label:ctx=>{const d=jobData[ctx.dataIndex];return[`  ${d.count}건`,`  맥락: ${d.context}`,`  관련상품: ${d.product}`];}}}},
+      scales:{x:{grid:{color:gc},ticks:{color:tc,font:{size:11,family:'Outfit'}}},y:{grid:{display:false},ticks:{color:tc,font:{size:11,family:'Noto Sans KR'}}}}
+    }
+  });
+}
+
+const insights=[
+  {icon:'🎁',title:'선생님·교수님 = 선물 대상',desc:'직업이 언급되는 주된 이유는 본인이 아닌 <b>선물 받는 사람</b>의 직업. "담임선생님 선물용", "교수님 임용 축하"'},
+  {icon:'🧴',title:'손 씻는 직업 → 무향 핸드크림',desc:'카페 직원, 병원 근무자 등 <b>손을 자주 씻는 직업군</b>(14건)이 무향 핸드크림을 반복 구매'},
+  {icon:'💇',title:'미용실 원장님의 간접 추천',desc:'트리트먼트바 사용 후 "미용실 <b>원장님이 머릿결 좋아졌다</b>고 깜짝 놀랐다"는 리뷰가 복수 존재'},
+  {icon:'📱',title:'인플루언서 = 구매 트리거',desc:'유튜버·인플루언서 언급은 <b>구매 계기</b>로 등장. "인스타 인플루언서가 추천하는 거 보고"'},
+];
+let insHtml='';
+insights.forEach(i=>{
+  insHtml+=`<div style="display:flex;gap:10px;margin-bottom:14px;align-items:flex-start;">
+    <span style="font-size:1.1rem;flex-shrink:0;margin-top:2px;">${i.icon}</span>
+    <div><div style="font-size:0.82rem;font-weight:600;margin-bottom:2px;">${i.title}</div>
+    <div style="font-size:0.75rem;color:var(--text2);line-height:1.6;">${i.desc}</div></div></div>`;
+});
+document.getElementById('jobInsights').innerHTML=insHtml;
+
+const jobSamples=[
+  {seg:'주부/살림',color:'amber',reviews:[
+    {text:'맨손으로 설거지하는게 편해서 종종 <em>주부습진</em>이 올라오기도 했는데 이건 괜찮아요',prod:'설거지 워싱바 1kg'},
+    {text:'세제 바꾸고 나서 <em>주부</em>습진이 사라졌어요',prod:'설거지비누 풋귤 1kg'}]},
+  {seg:'선생님 (선물 대상)',color:'accent',reviews:[
+    {text:'아이 어린이집 <em>선생님</em>들께 선물했어요. 교실에 향기가 가득하다며 칭찬받았어요',prod:'퍼퓸바 유채 선물세트'},
+    {text:'<em>담임선생님</em> 선물용으로 구입했는데 환경을 생각할 수 있는 제품이라 더 좋습니다',prod:'샴푸바 중건성용 (자몽향)'}]},
+  {seg:'카페·병원 근무 (무향 선호)',color:'coral',reviews:[
+    {text:'<em>카페 직원</em>으로서 자주 손을 씻어서 무향 핸드크림을 만나서 정말 다행이에요',prod:'핸드크림 시어버터 (무향)'},
+    {text:'<em>병원에서 일</em>해서 향으로 주변사람들에게 피해 끼칠일 없어서 굿',prod:'핸드크림 미니 3종 세트'}]},
+  {seg:'미용실 원장님 (간접 추천)',color:'pink',reviews:[
+    {text:'미용실 <em>원장님</em>이 머릿결 좋아졌다고 깜짝 놀랐어요',prod:'트리트먼트바 극손상용'},
+    {text:'미용실 갔는데 <em>원장님</em>이 머리결이 너무 좋아졌다는 얘기를 하셔서',prod:'트리트먼트바 극손상용'}]},
+  {seg:'승무원',color:'teal',reviews:[
+    {text:'<em>승무원</em>이고 여행 자주 다니는데 컨디셔너 소분해갖고 다니기 귀찮아서 비누로 샀는데 머릿결이 너무 부드러워져서 만족',prod:'트리트먼트바 동백'}]},
+  {seg:'교수님 (선물 대상)',color:'accent',reviews:[
+    {text:'<em>교수님</em> 임용 축하 선물로 오브제겸 드렸는데 정말 좋아하셨어요!! 센스 칭찬 받았어요',prod:'포레스트 빌리지 우디 퍼퓸바'},
+    {text:'<em>교수님</em> 선물로 드렸는데 연구실에 오브제로 둔다고 하셔서 넘넘 기뻤어요',prod:'포레스트 빌리지 우디 퍼퓸바'}]},
+];
+let jsg='';
+jobSamples.forEach(s=>{
+  const[bg,fg]=colorMap[s.color];
+  jsg+=`<div class="sample-card"><span class="seg-label" style="background:${bg};color:${fg};">${s.seg}</span>`;
+  s.reviews.forEach(r=>{jsg+=`<div style="margin-top:10px;"><span style="display:inline-block;font-size:0.68rem;font-weight:500;color:var(--text3);background:var(--bg3);padding:2px 8px;border-radius:4px;margin-bottom:4px;">${r.prod}</span><p class="review" style="margin-top:2px;">❝ ${r.text}</p></div>`;});
+  jsg+='</div>';
+});
+document.getElementById('jobSampleGrid').innerHTML=jsg;
+
+const repTypeData=[
+  {label:'재구매/재주문',count:1329},{label:'꾸준히/정착',count:766},
+  {label:'계속 구매/사용',count:486},{label:'늘/항상 구매',count:397},
+  {label:'대량구매/쟁여두기',count:374},{label:'장기 사용 (N년째)',count:336},
+  {label:'반복구매 (N번째)',count:255},{label:'또 구매 의향',count:83}
+];
+const repSegData=[
+  {label:'환경의식',count:317},{label:'선물',count:107},{label:'민감/아토피',count:94},
+  {label:'아이/어린이',count:62},{label:'아기/유아',count:40},{label:'남성(남편)',count:40},{label:'가족',count:37}
+];
+const repProdData=[
+  {label:'설거지 워싱바',pct:22.7},{label:'샴푸바 단골세트',pct:21.5},{label:'샴푸바 지성용',pct:19.7},
+  {label:'설거지비누 풋귤',pct:18.3},{label:'샴푸바 중건성용',pct:16.6},{label:'가꿈 바질 클렌징바',pct:16.5},
+  {label:'세안비누 콜라겐',pct:15.7},{label:'가꿈 케일 클렌징바',pct:15.3},{label:'샴푸바 (7종)',pct:15.3},
+  {label:'아기비누 (올인원)',pct:15.2},{label:'린스바',pct:14.2},{label:'페이스앤바디바',pct:13.2},
+  {label:'블루밍 퍼퓸 샴푸바',pct:12.5},{label:'트리트먼트바',pct:12.1},{label:'천연 수세미',pct:10.6},
+  {label:'비누망/거품망',pct:6.6},{label:'오브제 퍼퓸바',pct:6.5},{label:'플라워가든 퍼퓸바',pct:1.9}
+];
+
+let chartRepType,chartRepSeg,chartRepProd;
+function buildRepCharts(){
+  const tc=darkMode?'#a0a09a':'#5f5e5a';
+  const gc=darkMode?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.05)';
+  const ttOpts={backgroundColor:darkMode?'#333':'#fff',titleColor:darkMode?'#fff':'#1a1a18',bodyColor:darkMode?'#ccc':'#5f5e5a',borderColor:darkMode?'#555':'#e0dfdb',borderWidth:1,padding:12,cornerRadius:8};
+
+  if(chartRepType)chartRepType.destroy();
+  chartRepType=new Chart(document.getElementById('repTypeChart'),{
+    type:'bar',
+    data:{labels:repTypeData.map(d=>d.label),datasets:[{data:repTypeData.map(d=>d.count),backgroundColor:darkMode?'#97C459':'#639922',borderRadius:4,barPercentage:0.65}]},
+    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+      plugins:{legend:{display:false},tooltip:{...ttOpts,callbacks:{label:ctx=>`  ${ctx.raw.toLocaleString()}건`}}},
+      scales:{x:{grid:{color:gc},ticks:{color:tc,font:{size:11,family:'Outfit'}}},y:{grid:{display:false},ticks:{color:tc,font:{size:11,family:'Noto Sans KR'}}}}}
+  });
+
+  if(chartRepSeg)chartRepSeg.destroy();
+  const repSegColors=['#0F6E56','#534AB7','#D85A30','#1D9E75','#D4537E','#378ADD','#639922'];
+  chartRepSeg=new Chart(document.getElementById('repSegChart'),{
+    type:'doughnut',
+    data:{labels:repSegData.map(d=>d.label),datasets:[{data:repSegData.map(d=>d.count),backgroundColor:repSegColors,borderWidth:2,borderColor:darkMode?'#232326':'#ffffff'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'55%',
+      plugins:{legend:{position:'right',labels:{color:tc,font:{size:11,family:'Noto Sans KR'},padding:10,usePointStyle:true,pointStyleWidth:8}},
+        tooltip:{...ttOpts,callbacks:{label:ctx=>{const t=repSegData.reduce((a,b)=>a+b.count,0);return`  ${ctx.raw}건 (${(ctx.raw/t*100).toFixed(1)}%)`;}}}}}
+  });
+
+  if(chartRepProd)chartRepProd.destroy();
+  const prodBarColors=repProdData.map(d=>d.pct>=20?(darkMode?'#97C459':'#3B6D11'):d.pct>=15?(darkMode?'#C0DD97':'#639922'):d.pct>=10?(darkMode?'#6eb35a':'#97C459'):(darkMode?'#888780':'#B4B2A9'));
+  chartRepProd=new Chart(document.getElementById('repProdChart'),{
+    type:'bar',
+    data:{labels:repProdData.map(d=>d.label),datasets:[{data:repProdData.map(d=>d.pct),backgroundColor:prodBarColors,borderRadius:4,barPercentage:0.65}]},
+    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+      plugins:{legend:{display:false},tooltip:{...ttOpts,callbacks:{label:ctx=>`  재구매 비율 ${ctx.raw}%`}}},
+      scales:{x:{grid:{color:gc},ticks:{color:tc,font:{size:11,family:'Outfit'},callback:v=>v+'%'}},y:{grid:{display:false},ticks:{color:tc,font:{size:11,family:'Noto Sans KR'}}}}}
+  });
+}
+
+const repSamples=[
+  {seg:'장기 사용자 (N년째)',color:'green',reviews:[
+    {text:'<em>5년째</em> 사용중입니다~ 아이 젖병세제로도 괜찮아요',prod:'설거지 워싱바 1kg'},
+    {text:'거의 <em>4년째</em> 설거지바 사용중이에요. 처음엔 아기식기 닦느라 구매하기 시작했는데 이젠 안심하고 쓰고 있어요',prod:'설거지 워싱바 1kg'},
+    {text:'<em>몇년째</em> 쓰고 있습니다!!',prod:'트리트먼트바 극손상용'}]},
+  {seg:'정착 유저',color:'teal',reviews:[
+    {text:'이걸로 <em>정착</em>했어요 감사합니다',prod:'설거지 워싱바 1kg'},
+    {text:'환경, 건강 등 여러가지 이유로 사용하게 되었고, 처음 사용한 이후에는 <em>정착</em>한 제품입니다',prod:'세탁세제 70정'},
+    {text:'린스 대신 단독사용해요 <em>정착</em>중',prod:'트리트먼트바 극손상용'}]},
+  {seg:'대량구매/쟁여두기',color:'amber',reviews:[
+    {text:'비상식량 <em>쟁여</em>두듯 동구밭 설거지바는 항상 <em>쟁여</em>둡니다. 다른 설거지바 못써요',prod:'설거지 워싱바 1kg'},
+    {text:'늘 <em>쟁여</em>두고 쓰는 아이템 중 하나입니다. 안심하고 사용하는 중이에요',prod:'식기세척기 세제 타블렛'},
+    {text:'다이소에서 동구밭 설거지비누 사써보니 좋아서 <em>대량구매</em>했어요',prod:'설거지 워싱바 1kg'}]},
+  {seg:'꾸준히/계속 구매',color:'blue',reviews:[
+    {text:'<em>꾸준히</em> 구매하고 있어요. 환경에도 좋고 세정력도 만족합니다',prod:'설거지비누 풋귤'},
+    {text:'<em>계속 구매</em>하고 있어요. 두피 각질이 확실히 줄어서 좋아요',prod:'샴푸바 중건성용'},
+    {text:'<em>늘</em> 믿고 <em>사</em>는 동구밭입니다. 친환경 세제라서 안심하고 사용해요',prod:'설거지 워싱바 500g'}]},
+];
+let rsg='';
+repSamples.forEach(s=>{
+  const[bg,fg]=colorMap[s.color];
+  rsg+=`<div class="sample-card"><span class="seg-label" style="background:${bg};color:${fg};">${s.seg}</span>`;
+  s.reviews.forEach(r=>{rsg+=`<div style="margin-top:10px;"><span style="display:inline-block;font-size:0.68rem;font-weight:500;color:var(--text3);background:var(--bg3);padding:2px 8px;border-radius:4px;margin-bottom:4px;">${r.prod}</span><p class="review" style="margin-top:2px;">❝ ${r.text}</p></div>`;});
+  rsg+='</div>';
+});
+document.getElementById('repSampleGrid').innerHTML=rsg;
+
+buildCharts();buildJobChart();buildRepCharts();
+</script>
+</body>
+</html>
